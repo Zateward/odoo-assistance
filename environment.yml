@@ -1,0 +1,10 @@
+name: odoo
+channels:
+  - conda-forge
+  - defaults
+  - microsoft
+dependencies:
+  - python=3.12
+  - beautifulsoup4
+  - requests
+  - lxml

@@ -1,4 +1,4 @@
-name: odoo
+name: odooAssistance
 channels:
   - conda-forge
   - defaults

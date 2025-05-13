@@ -1,73 +1,56 @@
-import requests
-from bs4 import BeautifulSoup
+import time
+import os
+from playwright.sync_api import sync_playwright
+from dotenv import load_dotenv
 
-# Crear una sesión persistente
-session = requests.Session()
+load_dotenv()
 
-# URL de login
-url_login = "https://odoowebsite.dev.odoo.com/login"
+ODOO_URL = os.getenv('SITE')
+EMAIL = os.getenv('EMAIL')
+PASSWORD = os.getenv('PASSWORD')
 
-# Headers para simular un navegador real
-headers = {
-    "User-Agent": "Mozilla/5.0",
-    "Content-Type": "application/x-www-form-urlencoded",
-    "Referer": url_login,
-}
+def marcar_asistencia():
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)  # Cambia a False si quieres ver lo que hace
+        # Bloquear permisos de geolocalización
+        context = browser.new_context(
+            permissions=[],  # No se otorgan permisos
+            geolocation=None,  # Se bloquea ubicación
+        )
 
-# Searching for the CSRF token in the login form
-response_get = session.get(url_login, headers=headers)
-soup = BeautifulSoup(response_get.text, "html.parser")
+        page = context.new_page()
 
-csrf_token = soup.find("input", {"name": "csrf_token"})["value"]
-print("Token CSRF:", csrf_token)
+        # 1. Ir a la página de login
+        page.goto(f"{ODOO_URL}/web/login")
+        print("🔐 Cargando login...")
 
-login_payload = {
-    "csrf_token": csrf_token,
-    "login": "your username/email",  # Change this to your username or email
-    "password": "your password",  # Change this to your password
-    "redirect": "",  # This field is usually empty, but you can check the login form for its value
-}
+        # 2. Completar formulario y enviar
+        page.fill('input[name="login"]', EMAIL)
+        page.fill('input[name="password"]', PASSWORD)
+        page.click('text=Log in')
 
-# Login to the website
-response_login = session.post(url_login, headers=headers, data=login_payload)
+        # 3. Esperar a que cargue la interfaz principal
+        print("🔓 Iniciando sesión...")
+        page.wait_for_url(f"{ODOO_URL}/web", timeout=15000)
 
-if response_login.ok:
-    print("✅ Successful login")
-else:
-    print("❌ Faithful login. Code:", response_login.status_code)
-    print("Text:", response_login.text)
+        # 4. Esperar a que el systray esté disponible y hacer click en botón de asistencia
+        page.wait_for_selector('i.fa-circle', timeout=10000)
+        print("👀 Botón de asistencia detectado.")
 
-# Automating the attendance check-in/out
-url_attendance = "https://odoowebsite.dev.odoo.com/hr_attendance/systray_check_in_out"
+        # Hacer click en el botón de check-in/check-out
+        page.click('i.fa-circle')
+        
+        # Si existe .btn-success hacer click en el y si no hacer click en .btn-warning
+        if page.locator('.btn-success').is_visible():
+            page.click('.btn-success')
+        else:
+            page.click('.btn-warning')
 
-attendance_headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
-    "Content-Type": "application/json",
-    "Accept": "*/*",
-    "Origin": "https://odoowebsite.dev.odoo.com",
-    "Referer": "https://odoowebsite.dev.odoo.com/web",
-    "X-Requested-With": "XMLHttpRequest",
-    "Cookie": "",
-}
+        # Esperar que termine el proceso (puedes ajustar si da errores)
+        time.sleep(2)
 
-attendance_payload = {
-    "id" : 0,
-    "jsonrpc" : "2.0",
-    "method" : "call",
-    "params" : {}
-}
+        print("✅ Asistencia marcada correctamente.")
+        browser.close()
 
-response_attendance = session.post(url_attendance, headers=attendance_headers, json=attendance_payload)
-
-try:
-    result = response_attendance.json()
-    state = result["result"]["attendance_state"]
-    if state == "checked_in":
-        print("🟢 Successful check-in")
-    elif state == "checked_out":
-        print("🔴 Successful check-out")
-    else:
-        print("⚠️ Unknown state:", state)
-except Exception as e:
-    print("❌ Error while registering attendance:", e)
-    print(response_attendance.text)
+if __name__ == "__main__":
+    marcar_asistencia()

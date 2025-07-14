@@ -31,10 +31,10 @@ def marcar_asistencia():
 
         # 3. Esperar a que cargue la interfaz principal
         print("Logging In...")
-        page.wait_for_url(f"{ODOO_URL}/web", timeout=25000)
+        page.wait_for_url(f"{ODOO_URL}/web", timeout=35000)
 
         # 4. Esperar a que el systray esté disponible y hacer click en botón de asistencia
-        page.wait_for_selector('i.fa-circle', timeout=25000)
+        page.wait_for_selector('i.fa-circle', timeout=75000)
 
         # Hacer click en el botón de check-in/check-out
         page.click('i.fa-circle')

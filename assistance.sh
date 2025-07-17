@@ -38,4 +38,9 @@ fi
 # Activa entorno virtual y ejecuta script
 cd ~/Projects/odoo-assistance
 source venv/bin/activate
-python main.py
+
+LOGFILE="logs/$(date +'%Y-%m-%d_%H-%M')-$PERIODO.log"
+echo "Ejecutando main.py a las $(date)" >> "$LOGFILE"
+python main.py >> "$LOGFILE" 2>&1
+echo "Ejecución finalizada a las $(date)" >> "$LOGFILE"
+
